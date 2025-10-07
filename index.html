@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Route Number Finder</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      background-color: #f8f9fa;
+      padding: 20px;
+    }
+    h1 {
+      color: #333;
+      margin-bottom: 20px;
+    }
+    input, button {
+      padding: 10px;
+      font-size: 16px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+      margin: 5px;
+    }
+    button {
+      background-color: #007bff;
+      color: white;
+      border: none;
+    }
+    button:hover {
+      background-color: #0056b3;
+    }
+    table {
+      margin: 20px auto;
+      border-collapse: collapse;
+      width: 95%;
+      max-width: 700px;
+      table-layout: auto;
+    }
+    th, td {
+      border: 1px solid #ddd;
+      padding: 8px;
+      text-align: center;
+      word-break: break-word;
+    }
+    th {
+      background-color: #007bff;
+      color: white;
+      position: sticky;
+      top: 0;
+      z-index: 2;
+    }
+    tr:nth-child(even) {
+      background-color: #f2f2f2;
+    }
+    tr:nth-child(odd) {
+      background-color: #ffffff;
+    }
+    .hidden {
+      display: none;
+    }
+    .copy-btn {
+      background-color: #28a745;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      padding: 4px 6px;
+      font-size: 12px;
+      cursor: pointer;
+    }
+    .copied {
+      color: green;
+      font-size: 12px;
+      margin-left: 5px;
+      display: inline-block;
+      width: 60px;
+      text-align: left;
+    }
+  </style>
+</head>
+<body>
+  <h1>Route Number Finder</h1>
+  <input id="query" type="text" placeholder="Enter intersection..." />
+  <button onclick="search()">Search</button>
+  <button onclick="useMyLocation()">Use My Location</button>
+
+  <div id="loading" style="display:none;">Loading...</div>
+  <div id="no-results" style="display:none; font-size: 18px;">😢 No results found</div>
+  <div id="results"></div>
+
+  <script>
+    const scriptURL = "https://script.google.com/macros/s/AKfycbzedR6Q9zU9_HGtrKvfqkMcp1J203Wo4mwLoseUX_2r_yXAGtWMqYvuEcWH-W-077P8nw/exec";
+
+    document.getElementById("query").addEventListener("keypress", function(e) {
+      if (e.key === "Enter") search();
+    });
+
+    function search() {
+      const query = document.getElementById("query").value.trim();
+      if (!query) return alert("Please enter a search term.");
+      fetchData({ query });
+    }
+
+    function useMyLocation() {
+      if (navigator.geolocation) {
+        document.getElementById("loading").style.display = "block";
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            const coords = `${pos.coords.latitude},${pos.coords.longitude}`;
+            fetchData({ coords });
+          },
+          () => {
+            alert("Unable to retrieve your location.");
+            document.getElementById("loading").style.display = "none";
+          }
+        );
+      } else {
+        alert("Geolocation not supported on this device.");
+      }
+    }
+
+    function fetchData(params) {
+      document.getElementById("loading").style.display = "block";
+      document.getElementById("no-results").style.display = "none";
+      document.getElementById("results").innerHTML = "";
+
+      const formData = new URLSearchParams(params);
+      fetch(scriptURL, { method: "POST", body: formData })
+        .then((res) => res.json())
+        .then((data) => {
+          document.getElementById("loading").style.display = "none";
+          if (!data || data.length === 0 || !data[0][2]) {
+            document.getElementById("no-results").style.display = "block";
+            return;
+          }
+
+          // Build table
+          let table = "<table><thead><tr>";
+          data[0].slice(0, 3).forEach((header) => {
+            table += `<th>${header}</th>`;
+          });
+          table += "</tr></thead><tbody>";
+
+          data.slice(1).forEach((row) => {
+            if (row.every(cell => !cell)) return;
+            table += "<tr>";
+            // First column: add copy button
+            table += `<td>${row[0] || ""} ${row[0] ? `<button class="copy-btn" onclick="copyText('${row[0]}', this)">Copy</button><span class='copied hidden'>✅</span>` : ""}</td>`;
+            // Second column: text only
+            table += `<td>${row[1] || ""}</td>`;
+            // Third column: link to coordinates
+            const coords = row[3] ? encodeURIComponent(row[3]) : "";
+            const link = coords ? `https://www.google.com/maps/dir/?api=1&destination=${coords}` : "#";
+            table += `<td><a href="${link}" target="_blank">${row[2] || ""}</a></td>`;
+            table += "</tr>";
+          });
+
+          table += "</tbody></table>";
+          document.getElementById("results").innerHTML = table;
+        })
+        .catch(() => {
+          document.getElementById("loading").style.display = "none";
+          alert("Error loading data. Please try again.");
+        });
+    }
+
+    function copyText(text, btn) {
+      navigator.clipboard.writeText(text)
+        .then(() => {
+          const check = btn.nextElementSibling;
+          check.classList.remove("hidden");
+          setTimeout(() => check.classList.add("hidden"), 1500);
+        })
+        .catch(() => alert("Copy failed. Clipboard access denied."));
+    }
+  </script>
+</body>
+</html>
