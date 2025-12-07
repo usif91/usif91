@@ -1,0 +1,995 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Route Number Finder - Find Nearby Routes</title>
+  <meta name="description" content="Find route numbers and navigation links by entering street names or using your current location">
+  <meta name="keywords" content="route finder, navigation, directions, public transit, location">
+  
+  <!-- Open Graph / Social Media -->
+  <meta property="og:title" content="Route Number Finder">
+  <meta property="og:description" content="Find route numbers and navigation links quickly and easily">
+  <meta property="og:type" content="website">
+  
+  <!-- Favicon -->
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🗺️</text></svg>">
+  
+  <style>
+    :root {
+      --primary-color: #007bff;
+      --primary-dark: #0056b3;
+      --secondary-color: #004080;
+      --light-bg: #f2f6fc;
+      --white: #ffffff;
+      --light-gray: #f0f0f0;
+      --text-color: #333;
+      --text-light: #666;
+      --border-radius: 12px;
+      --shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+      --transition: all 0.3s ease;
+      --border-color: #ddd;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, Arial, sans-serif;
+      background: linear-gradient(135deg, var(--light-bg) 0%, #e8eff7 100%);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 15px;
+      color: var(--text-color);
+      line-height: 1.6;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 1200px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 25px;
+      padding: 0 15px;
+      width: 100%;
+    }
+
+    h1 {
+      margin-bottom: 10px;
+      color: var(--secondary-color);
+      font-size: 1.8rem;
+      font-weight: 700;
+    }
+
+    .subtitle {
+      color: var(--text-light);
+      font-size: 1rem;
+      max-width: 500px;
+      margin: 0 auto 20px;
+    }
+
+    .search-container {
+      background: var(--white);
+      padding: 20px;
+      border-radius: var(--border-radius);
+      box-shadow: var(--shadow);
+      width: 100%;
+      margin-bottom: 25px;
+      transition: var(--transition);
+    }
+
+    .search-container:hover {
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+    }
+
+    .input-group {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 15px;
+    }
+
+    input {
+      flex: 1;
+      padding: 14px 16px;
+      font-size: 16px;
+      border: 2px solid #e1e5eb;
+      border-radius: var(--border-radius);
+      outline: none;
+      transition: var(--transition);
+      background: var(--white);
+      width: 100%;
+    }
+
+    input:focus {
+      border-color: var(--primary-color);
+      box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.2);
+    }
+
+    input::placeholder {
+      color: #999;
+      font-size: 15px;
+    }
+
+    .button-group {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: center;
+      margin-bottom: 15px;
+    }
+
+    button {
+      padding: 12px 20px;
+      font-size: 15px;
+      font-weight: 600;
+      border: none;
+      border-radius: var(--border-radius);
+      cursor: pointer;
+      transition: var(--transition);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      flex: 1;
+      min-width: 120px;
+    }
+
+    button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .btn-primary {
+      background: var(--primary-color);
+      color: var(--white);
+    }
+
+    .btn-primary:hover:not(:disabled) {
+      background: var(--primary-dark);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0, 123, 255, 0.3);
+    }
+
+    .btn-secondary {
+      background: var(--white);
+      color: var(--primary-color);
+      border: 2px solid var(--primary-color);
+    }
+
+    .btn-secondary:hover:not(:disabled) {
+      background: var(--primary-color);
+      color: var(--white);
+      transform: translateY(-2px);
+    }
+
+    .btn-help {
+      background: #f8f9fa;
+      color: var(--text-light);
+      border: 2px solid #dee2e6;
+      padding: 10px 16px;
+      font-size: 14px;
+      min-width: 100px;
+    }
+
+    .btn-help:hover {
+      background: #e9ecef;
+      border-color: #adb5bd;
+      transform: translateY(-2px);
+    }
+
+    .loading-container {
+      margin: 25px 0;
+    }
+
+    .spinner {
+      margin: 0 auto;
+      border: 5px solid var(--light-gray);
+      border-top: 5px solid var(--primary-color);
+      border-radius: 50%;
+      width: 45px;
+      height: 45px;
+      animation: spin 1s linear infinite;
+      display: none;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    #results {
+      width: 100%;
+      margin-top: 15px;
+      max-height: 70vh;
+      overflow-y: auto;
+    }
+
+    /* Table with borders and centered content */
+    .results-table {
+      width: 100%;
+      border-collapse: collapse;
+      border-radius: var(--border-radius);
+      overflow: hidden;
+      box-shadow: var(--shadow);
+      background-color: var(--white);
+      margin-bottom: 20px;
+    }
+
+    .results-table th {
+      background-color: var(--secondary-color);
+      color: var(--white);
+      padding: 16px 10px;
+      text-align: center;
+      font-weight: 600;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      font-size: 15px;
+      border: 1px solid var(--border-color);
+      vertical-align: middle; /* Center vertically */
+      height: 60px; /* Fixed height for headers */
+    }
+
+    .results-table td {
+      padding: 14px 10px;
+      text-align: center;
+      border: 1px solid var(--border-color);
+      font-size: 14px;
+      vertical-align: middle; /* Center vertically */
+      word-wrap: break-word;
+      overflow-wrap: break-word;
+      min-height: 60px; /* Minimum height for cells */
+      display: table-cell; /* Ensure proper table cell behavior */
+    }
+
+    /* Column widths */
+    .results-table th:nth-child(1),
+    .results-table td:nth-child(1) {
+      width: 20%; /* Route Number */
+      max-width: 20%;
+    }
+
+    .results-table th:nth-child(2),
+    .results-table td:nth-child(2) {
+      width: 20%; /* Intersection */
+      max-width: 20%;
+    }
+
+    .results-table th:nth-child(3),
+    .results-table td:nth-child(3) {
+      width: 60%; /* Address */
+      max-width: 60%;
+    }
+
+    /* Row styling */
+    .results-table tbody tr:nth-child(odd) {
+      background-color: var(--white);
+    }
+
+    .results-table tbody tr:nth-child(even) {
+      background-color: var(--light-gray);
+    }
+
+    .results-table tbody tr:hover {
+      background-color: #e8f4ff;
+    }
+
+    /* Cell content containers */
+    .cell-content {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      width: 100%;
+      gap: 6px;
+    }
+
+    .route-number {
+      font-family: 'Courier New', monospace;
+      font-weight: 600;
+      font-size: 15px;
+      color: var(--secondary-color);
+      display: inline-block;
+      text-align: center;
+      max-width: 100%;
+    }
+
+    .copy-btn {
+      background: none;
+      border: none;
+      color: var(--primary-color);
+      cursor: pointer;
+      font-size: 16px;
+      padding: 4px;
+      transition: var(--transition);
+      border-radius: 4px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 30px;
+      height: 30px;
+      margin-top: 4px;
+    }
+
+    .copy-btn:hover {
+      background: rgba(0, 123, 255, 0.1);
+      transform: scale(1.1);
+    }
+
+    .nav-link {
+      color: var(--primary-color);
+      text-decoration: none;
+      font-weight: 600;
+      padding: 6px 10px;
+      border-radius: 6px;
+      transition: var(--transition);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      font-size: 14px;
+      line-height: 1.4;
+      text-align: center;
+      max-width: 100%;
+      word-break: break-word;
+    }
+
+    .nav-link:hover {
+      background: rgba(0, 123, 255, 0.1);
+      text-decoration: none;
+    }
+
+    /* For intersection column - maximize single line before wrapping */
+    .intersection-cell {
+      text-align: center;
+      white-space: pre-wrap; /* Allow wrapping but preserve spaces */
+      word-wrap: break-word;
+      overflow-wrap: break-word;
+      line-height: 1.4;
+      padding: 10px 8px;
+      max-width: 100%;
+    }
+
+    /* For address column content */
+    .address-content {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      width: 100%;
+    }
+
+    .address-text {
+      text-align: center;
+      word-break: break-word;
+      line-height: 1.4;
+      width: 100%;
+    }
+
+    .no-results {
+      text-align: center;
+      padding: 35px 20px;
+      background: var(--white);
+      border-radius: var(--border-radius);
+      box-shadow: var(--shadow);
+      margin: 20px 0;
+    }
+
+    .no-results .emoji {
+      font-size: 2.5rem;
+      margin-bottom: 12px;
+      display: block;
+    }
+
+    .no-results h3 {
+      color: var(--text-light);
+      margin-bottom: 10px;
+      font-size: 1.2rem;
+    }
+
+    .no-results p {
+      color: #777;
+      font-size: 0.95rem;
+    }
+
+    .error-message {
+      background: #fee;
+      color: #c00;
+      padding: 14px;
+      border-radius: var(--border-radius);
+      border-left: 4px solid #c00;
+      margin: 20px 0;
+      text-align: center;
+      font-size: 14px;
+    }
+
+    .instructions {
+      background: var(--white);
+      padding: 18px;
+      border-radius: var(--border-radius);
+      margin: 12px 0;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+      transition: var(--transition);
+      max-height: 0;
+      overflow: hidden;
+      opacity: 0;
+      transform: translateY(-10px);
+    }
+
+    .instructions.show {
+      max-height: 400px;
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .instructions h3 {
+      color: var(--secondary-color);
+      margin-bottom: 8px;
+      font-size: 1.1rem;
+    }
+
+    .instructions ul {
+      text-align: left;
+      max-width: 100%;
+      margin: 0 auto;
+      padding-left: 20px;
+      font-size: 14px;
+    }
+
+    .instructions li {
+      margin-bottom: 6px;
+      line-height: 1.4;
+    }
+
+    footer {
+      margin-top: 30px;
+      text-align: center;
+      color: var(--text-light);
+      font-size: 0.85rem;
+      padding: 15px;
+      width: 100%;
+      border-top: 1px solid var(--light-gray);
+    }
+
+    /* Mobile-specific optimizations */
+    @media (max-width: 768px) {
+      body {
+        padding: 12px;
+      }
+      
+      h1 {
+        font-size: 1.6rem;
+        margin-bottom: 8px;
+      }
+      
+      .subtitle {
+        font-size: 0.95rem;
+        margin-bottom: 15px;
+      }
+      
+      .search-container {
+        padding: 18px;
+        margin-bottom: 20px;
+      }
+      
+      .input-group {
+        flex-direction: column;
+        gap: 12px;
+      }
+      
+      input {
+        padding: 13px 15px;
+        font-size: 15px;
+      }
+      
+      .button-group {
+        flex-direction: column;
+        gap: 8px;
+      }
+      
+      button {
+        width: 100%;
+        padding: 13px;
+        font-size: 15px;
+      }
+      
+      .results-table {
+        font-size: 13px;
+      }
+      
+      .results-table th {
+        padding: 14px 6px;
+        font-size: 14px;
+        height: 55px;
+      }
+      
+      .results-table td {
+        padding: 12px 6px;
+        font-size: 13px;
+        min-height: 55px;
+      }
+      
+      .route-number {
+        font-size: 14px;
+      }
+      
+      .copy-btn {
+        width: 28px;
+        height: 28px;
+        font-size: 15px;
+      }
+      
+      .nav-link {
+        font-size: 13px;
+        padding: 5px 8px;
+      }
+      
+      .intersection-cell {
+        padding: 8px 6px;
+        font-size: 13px;
+      }
+    }
+
+    @media (max-width: 480px) {
+      body {
+        padding: 10px;
+      }
+      
+      h1 {
+        font-size: 1.4rem;
+      }
+      
+      .subtitle {
+        font-size: 0.9rem;
+      }
+      
+      .search-container {
+        padding: 15px;
+      }
+      
+      input {
+        padding: 12px 14px;
+        font-size: 14px;
+      }
+      
+      input::placeholder {
+        font-size: 14px;
+      }
+      
+      button {
+        padding: 12px;
+        font-size: 14px;
+        min-width: auto;
+      }
+      
+      .btn-help {
+        font-size: 13px;
+        padding: 10px 12px;
+      }
+      
+      .results-table th {
+        padding: 12px 4px;
+        font-size: 13px;
+        height: 50px;
+      }
+      
+      .results-table td {
+        padding: 10px 4px;
+        font-size: 12px;
+        min-height: 50px;
+      }
+      
+      /* Stack address and copy button on very small screens */
+      @media (max-width: 360px) {
+        .address-content {
+          flex-direction: column;
+          gap: 6px;
+        }
+        
+        .nav-link {
+          margin-bottom: 4px;
+          text-align: center;
+        }
+        
+        .route-number {
+          font-size: 13px;
+        }
+        
+        .intersection-cell {
+          font-size: 12px;
+          line-height: 1.3;
+        }
+      }
+    }
+
+    /* Ensure no horizontal scroll on phones */
+    @media (max-width: 767px) {
+      body, .container, .search-container, #results {
+        max-width: 100%;
+        overflow-x: hidden;
+      }
+      
+      .results-table {
+        width: 100%;
+        display: table;
+      }
+      
+      /* Allow table cells to expand vertically */
+      .results-table td {
+        white-space: normal;
+        word-wrap: break-word;
+        overflow-wrap: break-word;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>🗺️ Route Number Finder</h1>
+      <p class="subtitle">Find nearby route numbers and get instant navigation directions</p>
+    </header>
+
+    <main>
+      <div class="search-container">
+        <div class="input-group">
+          <input 
+            id="searchInput" 
+            type="text" 
+            placeholder="Enter street names (e.g., '7th and Expo')"
+            aria-label="Street names for route search"
+          >
+        </div>
+        
+        <div class="button-group">
+          <button id="searchButton" class="btn-primary">
+            <span>🔍</span> Search Routes
+          </button>
+          <button id="locationButton" class="btn-secondary">
+            <span>📍</span> Use My Location
+          </button>
+          <button id="helpButton" class="btn-help">
+            <span>❓</span> How to Use
+          </button>
+        </div>
+        
+        <div id="instructions" class="instructions">
+          <h3>How to use:</h3>
+          <ul>
+            <li>Enter two street names (e.g., "Main St and 5th Ave")</li>
+            <li>Or click "Use My Location" for nearby routes</li>
+            <li>Click route numbers to copy them</li>
+            <li>Click addresses for Google Maps navigation</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="loading-container">
+        <div class="spinner" id="loading" aria-label="Loading results"></div>
+      </div>
+
+      <div id="results" role="region" aria-live="polite"></div>
+    </main>
+
+    <footer>
+      <p>© 2024 Route Number Finder | All rights reserved</p>
+      <p><small>Your location data is only used for finding nearby routes and is not stored</small></p>
+    </footer>
+  </div>
+
+  <script>
+    const scriptURL = "https://script.google.com/macros/s/AKfycbzCSq3801VvghTPEeYK335u6VsVmkYKTrMaI-vBr2oAPIHa-5D_VhuN85567yYvU1mAxA/exec";
+    const searchButton = document.getElementById("searchButton");
+    const locationButton = document.getElementById("locationButton");
+    const helpButton = document.getElementById("helpButton");
+    const searchInput = document.getElementById("searchInput");
+    const loading = document.getElementById("loading");
+    const results = document.getElementById("results");
+    const instructions = document.getElementById("instructions");
+
+    // Add event listeners
+    searchButton.addEventListener("click", sendSearch);
+    locationButton.addEventListener("click", sendLocation);
+    helpButton.addEventListener("click", toggleInstructions);
+    searchInput.addEventListener("keypress", e => { 
+      if (e.key === "Enter") sendSearch(); 
+    });
+
+    // Toggle instructions visibility
+    function toggleInstructions() {
+      instructions.classList.toggle('show');
+      const isVisible = instructions.classList.contains('show');
+      helpButton.innerHTML = isVisible ? 
+        '<span>▲</span> Hide Instructions' : 
+        '<span>❓</span> How to Use';
+    }
+
+    // Add input validation
+    searchInput.addEventListener("input", () => {
+      searchButton.disabled = !searchInput.value.trim();
+    });
+
+    function setLoading(isLoading) {
+      loading.style.display = isLoading ? 'block' : 'none';
+      searchButton.disabled = isLoading;
+      locationButton.disabled = isLoading;
+    }
+
+    async function sendSearch() {
+      const query = searchInput.value.trim();
+      if (!query) {
+        searchInput.focus();
+        return;
+      }
+      
+      // Hide instructions when searching
+      if (instructions.classList.contains('show')) {
+        toggleInstructions();
+      }
+      
+      setLoading(true);
+      results.innerHTML = '';
+      
+      try {
+        const response = await fetch(scriptURL, {
+          method: "POST",
+          body: new URLSearchParams({ query })
+        });
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        showResults(data);
+      } catch (error) {
+        showError(error);
+      }
+    }
+
+    function sendLocation() {
+      if (!navigator.geolocation) {
+        alert("Geolocation is not supported by your device.");
+        return;
+      }
+      
+      // Hide instructions when using location
+      if (instructions.classList.contains('show')) {
+        toggleInstructions();
+      }
+      
+      setLoading(true);
+      results.innerHTML = '';
+      
+      navigator.geolocation.getCurrentPosition(
+        async (pos) => {
+          try {
+            const coords = `${pos.coords.latitude},${pos.coords.longitude}`;
+            const response = await fetch(scriptURL, {
+              method: "POST",
+              body: new URLSearchParams({ coords })
+            });
+            
+            if (!response.ok) {
+              throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            const data = await response.json();
+            showResults(data);
+          } catch (error) {
+            showError(error);
+          }
+        },
+        (error) => {
+          setLoading(false);
+          let message = "Unable to get your location.";
+          switch(error.code) {
+            case error.PERMISSION_DENIED:
+              message = "Location permission denied. Please allow location access.";
+              break;
+            case error.POSITION_UNAVAILABLE:
+              message = "Location information is unavailable.";
+              break;
+            case error.TIMEOUT:
+              message = "Location request timed out.";
+              break;
+          }
+          results.innerHTML = `
+            <div class="error-message">
+              <strong>Location Error</strong><br>
+              ${message}
+            </div>
+          `;
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 0
+        }
+      );
+    }
+
+    function showResults(data) {
+      setLoading(false);
+
+      // Check if we have valid results - check if second row index 2 is empty
+      if (!data || data.length <= 1 || !isValidData(data)) {
+        showNoResults();
+        return;
+      }
+
+      // Build table with header and body for proper row styling
+      let table = `<table class="results-table"><thead><tr>`;
+      data[0].slice(0, 3).forEach(header => 
+        table += `<th scope="col">${escapeHTML(header)}</th>`
+      );
+      table += `</tr></thead><tbody>`;
+
+      for (let i = 1; i < data.length; i++) {
+        if (!data[i].some(cell => cell !== "")) continue;
+
+        const coords = data[i][3]; // hidden 4th column for navigation
+
+        table += `<tr>`;
+        data[i].slice(0, 3).forEach((cell, index) => {
+          const safeCell = escapeHTML(cell || '');
+          
+          if (index === 0 && cell) {
+            // Route Number column with copy button
+            let num = cell.toString();
+            if (/^\d+$/.test(num)) num = num.padStart(5, "0");
+            table += `
+              <td>
+                <div class="cell-content">
+                  <span class="route-number">${num}</span>
+                  <button class="copy-btn" onclick="copyText('${num}')" 
+                          aria-label="Copy route number ${num}">
+                    📋
+                  </button>
+                </div>
+              </td>`;
+          } else if (index === 1 && cell) {
+            // Intersection column - NO copy button
+            table += `<td class="intersection-cell"><div class="cell-content">${safeCell}</div></td>`;
+          } else if (index === 2 && cell) {
+            // Address column with navigation link AND copy button
+            const url = coords
+              ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(coords)}`
+              : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(cell)}`;
+            table += `
+              <td>
+                <div class="cell-content">
+                  <div class="address-content">
+                    <a href="${url}" target="_blank" rel="noopener noreferrer" class="nav-link">
+                      <span class="nav-icon">📍</span>
+                      <span class="address-text">${safeCell}</span>
+                    </a>
+                    <button class="copy-btn" onclick="copyText('${safeCell}')" 
+                            aria-label="Copy address ${safeCell}">
+                      📋
+                    </button>
+                  </div>
+                </div>
+              </td>`;
+          } else {
+            table += `<td><div class="cell-content">${safeCell}</div></td>`;
+          }
+        });
+        table += `</tr>`;
+      }
+
+      table += `</tbody></table>`;
+      results.innerHTML = table;
+      
+      // Announce results to screen readers
+      announceResults(data.length - 1);
+    }
+
+    // New function to validate data - check if second row index 2 has content
+    function isValidData(data) {
+      // Check if we have at least 2 rows (header + data)
+      if (data.length < 2) return false;
+      
+      // Check if the second row (index 1) exists and has data in index 2
+      if (data[1] && data[1].length > 2) {
+        const secondRowIndex2 = data[1][2];
+        if (!secondRowIndex2 || secondRowIndex2.trim() === '') {
+          return false; // Second row index 2 is empty
+        }
+      } else {
+        return false; // Second row doesn't exist or doesn't have index 2
+      }
+      
+      // Also check overall if any cell has data
+      return data[1].some(cell => cell !== "");
+    }
+
+    function showError(err) {
+      setLoading(false);
+      results.innerHTML = `
+        <div class="error-message">
+          <strong>An error occurred</strong><br>
+          ${escapeHTML(err.message)}
+          <p><small>Please try again or check your connection.</small></p>
+        </div>`;
+    }
+
+    function showNoResults() {
+      setLoading(false);
+      results.innerHTML = `
+        <div class="no-results">
+          <span class="emoji">😢</span>
+          <h3>Nothing was found</h3>
+          <p>Try different street names or use your location</p>
+        </div>`;
+    }
+
+    function copyText(text) {
+      navigator.clipboard.writeText(text)
+        .then(() => {
+          // Show temporary feedback on the button that was clicked
+          const event = window.event || {};
+          const target = event.target || event.srcElement;
+          if (target && target.classList.contains('copy-btn')) {
+            const originalHTML = target.innerHTML;
+            target.innerHTML = '✓';
+            target.style.color = '#28a745';
+            
+            setTimeout(() => {
+              target.innerHTML = originalHTML;
+              target.style.color = '';
+            }, 1500);
+          }
+        })
+        .catch(() => {
+          alert("Copy failed. Please try selecting and copying manually.");
+        });
+    }
+
+    function escapeHTML(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    function announceResults(count) {
+      const announcement = document.createElement('div');
+      announcement.setAttribute('aria-live', 'polite');
+      announcement.setAttribute('aria-atomic', 'true');
+      announcement.className = 'sr-only';
+      announcement.textContent = `Found ${count} route${count !== 1 ? 's' : ''}`;
+      document.body.appendChild(announcement);
+      setTimeout(() => document.body.removeChild(announcement), 1000);
+    }
+
+    // Add CSS for screen readers
+    const srOnlyCSS = document.createElement('style');
+    srOnlyCSS.textContent = `
+      .sr-only {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border: 0;
+      }
+    `;
+    document.head.appendChild(srOnlyCSS);
+  </script>
+</body>
+</html>
